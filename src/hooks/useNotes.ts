@@ -5,26 +5,33 @@ export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const results = searchQuery
+      let results = searchQuery
         ? await searchNotes(searchQuery)
         : await getAllNotes();
+      
+      // Filter by tag if selected
+      if (selectedTag) {
+        results = results.filter((note) => note.tags.includes(selectedTag));
+      }
+      
       setNotes(results);
     } catch (error) {
       console.error("Failed to fetch notes:", error);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery]);
+  }, [searchQuery, selectedTag]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  const addNote = useCallback(async (content: string, title?: string) => {
-    const note = await createNote(content, title);
+  const addNote = useCallback(async (content: string, title?: string, tags?: string[]) => {
+    const note = await createNote(content, title, tags);
     setNotes((prev) => [note, ...prev]);
     return note;
   }, []);
@@ -50,6 +57,8 @@ export function useNotes() {
     loading,
     searchQuery,
     setSearchQuery,
+    selectedTag,
+    setSelectedTag,
     addNote,
     editNote,
     removeNote,
