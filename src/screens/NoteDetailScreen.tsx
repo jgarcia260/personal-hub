@@ -6,10 +6,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ScrollView,
+  Text,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { getNote, updateNote, deleteNote, type Note } from "../db/notes";
+import { TagInput } from "../components/TagInput";
 
 type Props = NativeStackScreenProps<RootStackParamList, "NoteDetail">;
 
@@ -18,6 +21,7 @@ export function NoteDetailScreen({ route, navigation }: Props) {
   const [note, setNote] = useState<Note | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
 
   useEffect(() => {
     loadNote();
@@ -29,18 +33,19 @@ export function NoteDetailScreen({ route, navigation }: Props) {
       setNote(n);
       setTitle(n.title);
       setContent(n.content);
+      setTags(n.tags);
     }
   }
 
   useEffect(() => {
     // Auto-save on blur
     const unsubscribe = navigation.addListener("beforeRemove", () => {
-      if (note && (title !== note.title || content !== note.content)) {
-        updateNote(noteId, { title, content }).catch(console.error);
+      if (note && (title !== note.title || content !== note.content || JSON.stringify(tags) !== JSON.stringify(note.tags))) {
+        updateNote(noteId, { title, content, tags }).catch(console.error);
       }
     });
     return unsubscribe;
-  }, [navigation, note, title, content, noteId]);
+  }, [navigation, note, title, content, tags, noteId]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -69,22 +74,28 @@ export function NoteDetailScreen({ route, navigation }: Props) {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <TextInput
-        style={styles.title}
-        value={title}
-        onChangeText={setTitle}
-        placeholder="Title"
-        placeholderTextColor="#636366"
-      />
-      <TextInput
-        style={styles.content}
-        value={content}
-        onChangeText={setContent}
-        placeholder="Start writing..."
-        placeholderTextColor="#636366"
-        multiline
-        textAlignVertical="top"
-      />
+      <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
+        <TextInput
+          style={styles.title}
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Title"
+          placeholderTextColor="#636366"
+        />
+        <TextInput
+          style={styles.content}
+          value={content}
+          onChangeText={setContent}
+          placeholder="Start writing..."
+          placeholderTextColor="#636366"
+          multiline
+          textAlignVertical="top"
+        />
+        <View style={styles.tagSection}>
+          <Text style={styles.tagLabel}>Tags</Text>
+          <TagInput tags={tags} onTagsChange={setTags} />
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -93,6 +104,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#000",
+  },
+  scrollView: {
+    flex: 1,
     padding: 16,
   },
   title: {
@@ -103,9 +117,18 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   content: {
-    flex: 1,
+    minHeight: 200,
     fontSize: 16,
     lineHeight: 24,
     color: "#EBEBF5",
+    marginBottom: 16,
+  },
+  tagSection: {
+    gap: 8,
+  },
+  tagLabel: {
+    color: "#8E8E93",
+    fontSize: 13,
+    fontWeight: "500",
   },
 });

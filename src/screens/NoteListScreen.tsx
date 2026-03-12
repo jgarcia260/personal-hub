@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
@@ -15,7 +16,14 @@ import { useNotes } from "../hooks/useNotes";
 type Props = NativeStackScreenProps<RootStackParamList, "NoteList">;
 
 export function NoteListScreen({ navigation }: Props) {
-  const { notes, loading, searchQuery, setSearchQuery } = useNotes();
+  const { notes, loading, searchQuery, setSearchQuery, selectedTag, setSelectedTag } = useNotes();
+  
+  // Extract all unique tags from notes
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    notes.forEach((note) => note.tags.forEach((tag) => tagSet.add(tag)));
+    return Array.from(tagSet).sort();
+  }, [notes]);
 
   function formatDate(dateStr: string) {
     const d = new Date(dateStr);
@@ -45,6 +53,35 @@ export function NoteListScreen({ navigation }: Props) {
         placeholder="Search notes..."
         placeholderTextColor="#636366"
       />
+
+      {allTags.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tagFilterContainer}
+          contentContainerStyle={styles.tagFilterContent}
+        >
+          <TouchableOpacity
+            style={[styles.tagFilter, !selectedTag && styles.tagFilterActive]}
+            onPress={() => setSelectedTag(null)}
+          >
+            <Text style={[styles.tagFilterText, !selectedTag && styles.tagFilterTextActive]}>
+              All
+            </Text>
+          </TouchableOpacity>
+          {allTags.map((tag) => (
+            <TouchableOpacity
+              key={tag}
+              style={[styles.tagFilter, selectedTag === tag && styles.tagFilterActive]}
+              onPress={() => setSelectedTag(tag === selectedTag ? null : tag)}
+            >
+              <Text style={[styles.tagFilterText, selectedTag === tag && styles.tagFilterTextActive]}>
+                #{tag}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
       <FlatList
         data={notes}
@@ -112,10 +149,39 @@ const styles = StyleSheet.create({
   search: {
     backgroundColor: "#1C1C1E",
     margin: 12,
+    marginBottom: 8,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 15,
+    color: "#FFF",
+  },
+  tagFilterContainer: {
+    flexGrow: 0,
+    marginBottom: 8,
+  },
+  tagFilterContent: {
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  tagFilter: {
+    backgroundColor: "#1C1C1E",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  tagFilterActive: {
+    backgroundColor: "#007AFF",
+    borderColor: "#007AFF",
+  },
+  tagFilterText: {
+    color: "#8E8E93",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  tagFilterTextActive: {
     color: "#FFF",
   },
   list: {

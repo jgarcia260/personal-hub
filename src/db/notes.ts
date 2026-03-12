@@ -24,18 +24,19 @@ function rowToNote(row: any): Note {
   };
 }
 
-export async function createNote(content: string, title?: string): Promise<Note> {
+export async function createNote(content: string, title?: string, tags?: string[]): Promise<Note> {
   const db = await getDatabase();
   const id = generateId();
   const noteTitle = title || content.split("\n")[0].slice(0, 100) || "Untitled";
   const now = new Date().toISOString();
+  const noteTags = tags || [];
 
   await db.runAsync(
     "INSERT INTO notes (id, title, content, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-    [id, noteTitle, content, "[]", now, now]
+    [id, noteTitle, content, JSON.stringify(noteTags), now, now]
   );
 
-  return { id, title: noteTitle, content, tags: [], createdAt: now, updatedAt: now };
+  return { id, title: noteTitle, content, tags: noteTags, createdAt: now, updatedAt: now };
 }
 
 export async function updateNote(

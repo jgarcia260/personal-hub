@@ -7,15 +7,18 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { useNotes } from "../hooks/useNotes";
+import { TagInput } from "../components/TagInput";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Capture">;
 
 export function CaptureScreen({ navigation }: Props) {
   const [text, setText] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const inputRef = useRef<TextInput>(null);
   const { addNote } = useNotes();
 
@@ -29,8 +32,9 @@ export function CaptureScreen({ navigation }: Props) {
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    const note = await addNote(trimmed);
+    const note = await addNote(trimmed, undefined, tags);
     setText("");
+    setTags([]);
     navigation.navigate("NoteList");
   }
 
@@ -40,17 +44,23 @@ export function CaptureScreen({ navigation }: Props) {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={88}
     >
-      <TextInput
-        ref={inputRef}
-        style={styles.input}
-        value={text}
-        onChangeText={setText}
-        placeholder="What's on your mind?"
-        placeholderTextColor="#636366"
-        multiline
-        textAlignVertical="top"
-        autoFocus
-      />
+      <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
+        <TextInput
+          ref={inputRef}
+          style={styles.input}
+          value={text}
+          onChangeText={setText}
+          placeholder="What's on your mind?"
+          placeholderTextColor="#636366"
+          multiline
+          textAlignVertical="top"
+          autoFocus
+        />
+        <View style={styles.tagSection}>
+          <Text style={styles.tagLabel}>Tags</Text>
+          <TagInput tags={tags} onTagsChange={setTags} />
+        </View>
+      </ScrollView>
       <View style={styles.footer}>
         <Text style={styles.hint}>
           First line becomes the title
@@ -72,12 +82,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
   },
-  input: {
+  scrollView: {
     flex: 1,
+  },
+  input: {
+    minHeight: 200,
     padding: 16,
     fontSize: 17,
     lineHeight: 26,
     color: "#FFF",
+  },
+  tagSection: {
+    padding: 16,
+    paddingTop: 0,
+    gap: 8,
+  },
+  tagLabel: {
+    color: "#8E8E93",
+    fontSize: 13,
+    fontWeight: "500",
   },
   footer: {
     flexDirection: "row",
