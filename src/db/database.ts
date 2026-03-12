@@ -28,8 +28,31 @@ async function initSchema(database: SQLite.SQLiteDatabase): Promise<void> {
       UNIQUE(source_id, target_id)
     );
 
+    -- Performance indexes
     CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_notes_title ON notes(title COLLATE NOCASE);
     CREATE INDEX IF NOT EXISTS idx_links_source ON note_links(source_id);
     CREATE INDEX IF NOT EXISTS idx_links_target ON note_links(target_id);
+
+    -- Full-text search virtual table
+    CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
+      title, 
+      content,
+      content=notes,
+      content_rowid=rowid
+    );
+
+    -- Triggers to keep FTS in sync
+    CREATE TRIGGER IF NOT EXISTS notes_ai AFTER INSERT ON notes BEGIN
+      INSERT INTO notes_fts(rowid, title, content) VALUES (new.rowid, new.title, new.content);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS notes_ad AFTER DELETE ON notes BEGIN
+      DELETE FROM notes_fts WHERE rowid = old.rowid;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS notes_au AFTER UPDATE ON notes BEGIN
+      UPDATE notes_fts SET title = new.title, content = new.content WHERE rowid = new.rowid;
+    END;
   `);
 }
