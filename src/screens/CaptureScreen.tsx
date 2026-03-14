@@ -12,7 +12,9 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { useNotes } from "../hooks/useNotes";
+import { useRelatedNotes } from "../hooks/useRelatedNotes";
 import { TagInput } from "../components/TagInput";
+import { RelatedNotesPanel } from "../components/RelatedNotesPanel";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Capture">;
 
@@ -21,6 +23,7 @@ export function CaptureScreen({ navigation }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const inputRef = useRef<TextInput>(null);
   const { addNote } = useNotes();
+  const { relatedNotes, loading: relatedLoading } = useRelatedNotes(text, tags, 300);
 
   useEffect(() => {
     // Auto-focus on mount — brain dump ready
@@ -36,6 +39,11 @@ export function CaptureScreen({ navigation }: Props) {
     setText("");
     setTags([]);
     navigation.navigate("NoteList");
+  }
+
+  function handleRelatedNotePress(noteId: string) {
+    // Navigate to the related note
+    navigation.navigate("NoteDetail", { noteId });
   }
 
   return (
@@ -61,6 +69,11 @@ export function CaptureScreen({ navigation }: Props) {
           <TagInput tags={tags} onTagsChange={setTags} />
         </View>
       </ScrollView>
+      <RelatedNotesPanel
+        relatedNotes={relatedNotes}
+        loading={relatedLoading}
+        onNotePress={handleRelatedNotePress}
+      />
       <View style={styles.footer}>
         <Text style={styles.hint}>
           First line becomes the title
