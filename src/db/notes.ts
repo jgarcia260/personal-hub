@@ -1,4 +1,5 @@
 import { getDatabase } from "./database";
+import { syncNoteEmbedding, deleteNoteEmbedding } from "./embeddings";
 
 export interface Note {
   id: string;
@@ -68,6 +69,11 @@ export async function createNote(content: string, title?: string, tags?: string[
       "INSERT INTO notes (id, title, content, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
       [id, noteTitle, content.trim(), JSON.stringify(noteTags), now, now]
     );
+
+    // Sync embedding in background (don't block note creation)
+    syncNoteEmbedding(id).catch((error) => {
+      console.error("Failed to sync embedding for new note:", error);
+    });
   } catch (error) {
     console.error("Failed to create note:", error);
     throw new Error("Failed to save note");
@@ -131,6 +137,9 @@ export async function deleteNote(id: string): Promise<void> {
   const db = await getDatabase();
   
   try {
+    // Delete embedding first (won't block if fails)
+    await deleteNoteEmbedding(id);
+
     const result = await db.runAsync("DELETE FROM notes WHERE id = ?", [id]);
     if (result.changes === 0) {
       throw new Error("Note not found");

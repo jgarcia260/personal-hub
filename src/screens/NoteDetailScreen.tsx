@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   TextInput,
@@ -14,7 +14,10 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { getNote, updateNote, deleteNote, type Note } from "../db/notes";
 import { updateLinksForNote, getOutgoingLinks, getBacklinks } from "../db/links";
+import { syncNoteEmbedding } from "../db/embeddings";
 import { TagInput } from "../components/TagInput";
+import { LinkSuggestions } from "../components/LinkSuggestions";
+import { useLinkSuggestions } from "../hooks/useLinkSuggestions";
 
 type Props = NativeStackScreenProps<RootStackParamList, "NoteDetail">;
 
@@ -26,6 +29,11 @@ export function NoteDetailScreen({ route, navigation }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const [linkedNotes, setLinkedNotes] = useState<{ id: string; title: string }[]>([]);
   const [backlinks, setBacklinks] = useState<{ id: string; title: string }[]>([]);
+  const contentInputRef = useRef<TextInput>(null);
+
+  // Get AI-powered link suggestions
+  const { suggestions, loading: suggestionsLoading, error: suggestionsError } = 
+    useLinkSuggestions(noteId, title, content);
 
   useEffect(() => {
     loadNote();
@@ -56,6 +64,11 @@ export function NoteDetailScreen({ route, navigation }: Props) {
         try {
           await updateNote(noteId, { title, content, tags });
           await updateLinksForNote(noteId, content);
+          
+          // Sync embedding in background (don't block navigation)
+          syncNoteEmbedding(noteId).catch((error) => {
+            console.error("Failed to sync embedding:", error);
+          });
         } catch (error) {
           console.error("Failed to save note:", error);
         }
@@ -63,6 +76,22 @@ export function NoteDetailScreen({ route, navigation }: Props) {
     });
     return unsubscribe;
   }, [navigation, note, title, content, tags, noteId]);
+
+  function handleAddLink(suggestedNoteId: string, suggestedTitle: string) {
+    // Insert [[title]] at cursor position or end of content
+    const linkText = `[[${suggestedTitle}]]`;
+    
+    // For simplicity, append to end with spacing
+    const updatedContent = content.trim() + `\n\n${linkText}`;
+    setContent(updatedContent);
+
+    // Optionally focus the input
+    contentInputRef.current?.focus();
+  }
+
+  function handleNavigateToNote(targetNoteId: string) {
+    navigation.push("NoteDetail", { noteId: targetNoteId });
+  }
 
   useEffect(() => {
     navigation.setOptions({
@@ -100,6 +129,7 @@ export function NoteDetailScreen({ route, navigation }: Props) {
           placeholderTextColor="#636366"
         />
         <TextInput
+          ref={contentInputRef}
           style={styles.content}
           value={content}
           onChangeText={setContent}
@@ -108,6 +138,16 @@ export function NoteDetailScreen({ route, navigation }: Props) {
           multiline
           textAlignVertical="top"
         />
+
+        {/* AI Link Suggestions */}
+        <LinkSuggestions
+          suggestions={suggestions}
+          loading={suggestionsLoading}
+          error={suggestionsError}
+          onAddLink={handleAddLink}
+          onNavigateToNote={handleNavigateToNote}
+        />
+
         <View style={styles.tagSection}>
           <Text style={styles.tagLabel}>Tags</Text>
           <TagInput tags={tags} onTagsChange={setTags} />

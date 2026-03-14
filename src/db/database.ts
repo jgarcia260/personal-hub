@@ -28,11 +28,20 @@ async function initSchema(database: SQLite.SQLiteDatabase): Promise<void> {
       UNIQUE(source_id, target_id)
     );
 
+    CREATE TABLE IF NOT EXISTS embeddings (
+      note_id TEXT PRIMARY KEY REFERENCES notes(id) ON DELETE CASCADE,
+      pinecone_id TEXT NOT NULL,
+      embedding_model TEXT NOT NULL DEFAULT 'text-embedding-3-small',
+      synced_at TEXT NOT NULL,
+      content_hash TEXT NOT NULL
+    );
+
     -- Performance indexes
     CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_notes_title ON notes(title COLLATE NOCASE);
     CREATE INDEX IF NOT EXISTS idx_links_source ON note_links(source_id);
     CREATE INDEX IF NOT EXISTS idx_links_target ON note_links(target_id);
+    CREATE INDEX IF NOT EXISTS idx_embeddings_synced ON embeddings(synced_at);
 
     -- Full-text search virtual table
     CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
