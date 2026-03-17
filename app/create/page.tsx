@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import RecentJots from "@/components/RecentJots";
 
 type TicketType = "task" | "research";
 
@@ -181,7 +182,7 @@ export default function CreatePage() {
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             Capture quick thoughts or ideas. You can promote them to tickets later.
           </p>
-          <form onSubmit={handleJotSubmit} className="space-y-3">
+          <form onSubmit={handleJotSubmit} className="space-y-3 mb-6">
             <textarea
               value={jotContent}
               onChange={(e) => setJotContent(e.target.value)}
@@ -197,6 +198,12 @@ export default function CreatePage() {
               {isSubmitting ? "Saving..." : "Save Jot"}
             </button>
           </form>
+
+          {/* Recent Jots */}
+          <div>
+            <h3 className="text-lg font-medium mb-3">Recent Jots</h3>
+            <RecentJots limit={5} />
+          </div>
         </div>
       </div>
     </div>
